@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pluviometrics Data</title>
+  <meta name="robots" content="noindex">
+  <style>
+    :root {
+      --brand-bg:      #071B2A;
+      --brand-name:    #FFFFFF;
+      --brand-tagline: #48D36C;
+      --brand-muted:   rgba(255,255,255,0.55);
+    }
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--brand-bg);
+      color: var(--brand-name);
+      font-family: 'Inter','Helvetica Neue',Helvetica,system-ui,sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    main {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .name {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+    }
+    .tagline {
+      font-size: 12px;
+      letter-spacing: 0.24em;
+      color: var(--brand-tagline);
+      text-transform: uppercase;
+    }
+    .note {
+      margin-top: 28px;
+      max-width: 480px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: var(--brand-muted);
+      line-height: 1.6;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: var(--brand-name);
+      background: rgba(255,255,255,0.06);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="name">Pluviometrics</div>
+    <div class="tagline">Data</div>
+    <p class="note">
+      This subdomain hosts shared data files for Stormgauge and Atmos.
+      Files are served as static assets at <code>/&lt;path&gt;</code>.
+    </p>
+  </main>
+</body>
+</html>
