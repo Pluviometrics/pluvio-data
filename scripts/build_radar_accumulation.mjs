@@ -41,7 +41,9 @@ const AOI_BBOX = { minLon: 151.15, minLat: -33.85, maxLon: 151.40, maxLat: -33.5
 const NODATA_VALUE = -32767;
 
 const NATIVE_SIZE = 256;      // what the API returns for the AOI bbox
-const GRID_SIZE = 128;        // published grid (2x2 mean downsample)
+// Published at native resolution. Probed 2026-07-09: requesting 512 returns
+// 99.2% duplicated 2x2 blocks, so 256 is the source's real information ceiling.
+const GRID_SIZE = 256;
 const FRAME_INTERVAL_MS = 3 * 3600 * 1000;
 const OBSERVATION_LAG_MS = 15 * 60 * 1000;   // ignore frames newer than now-15min
 const FETCH_DELAY_MS = 250;
@@ -188,19 +190,21 @@ async function fetchFrame(tsIso) {
   return null;
 }
 
-// 2x2 nodata-aware mean, native 256x256 -> 128x128. Returns Float64Array with
-// NaN for cells that had no valid native pixel.
-function downsample(frame) {
-  if (frame.width !== NATIVE_SIZE || frame.height !== NATIVE_SIZE) {
-    throw new Error(`Unexpected frame size ${frame.width}x${frame.height} (expected ${NATIVE_SIZE})`);
+// Frame -> publication grid as Float64Array with NaN for invalid pixels.
+// Passes native-resolution frames through; block-averages (nodata-aware) if
+// the frame is an exact multiple of the grid size.
+function toGrid(frame) {
+  if (frame.width !== frame.height || frame.width % GRID_SIZE !== 0) {
+    throw new Error(`Unexpected frame size ${frame.width}x${frame.height} (grid ${GRID_SIZE})`);
   }
+  const k = frame.width / GRID_SIZE;
   const out = new Float64Array(GRID_SIZE * GRID_SIZE).fill(NaN);
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       let sum = 0, n = 0;
-      for (let dr = 0; dr < 2; dr++) {
-        for (let dc = 0; dc < 2; dc++) {
-          const v = frame.values[(r * 2 + dr) * NATIVE_SIZE + (c * 2 + dc)];
+      for (let dr = 0; dr < k; dr++) {
+        for (let dc = 0; dc < k; dc++) {
+          const v = frame.values[(r * k + dr) * frame.width + (c * k + dc)];
           if (v !== NODATA_VALUE && Number.isFinite(v) && v >= 0) { sum += v; n++; }
         }
       }
@@ -235,7 +239,7 @@ async function accumulateWindow(startMs, endMs, label) {
     const frame = await fetchFrame(tsIso);
     await sleep(FETCH_DELAY_MS);
     if (!frame) { missing.push(tsIso); continue; }
-    const grid = downsample(frame);
+    const grid = toGrid(frame);
     for (let i = 0; i < grid.length; i++) {
       if (!Number.isNaN(grid[i])) { sums[i] += grid[i]; counts[i]++; }
     }
@@ -311,11 +315,16 @@ async function main() {
     const startMs = dayBoundaryUtcMs(date);
     const endMs = dayBoundaryUtcMs(addDays(date, 1));
     const file = path.join(DAILY_DIR, `${date}.json`);
-    // Skip only if an existing file already used every expected frame.
+    // Skip only if an existing file used every expected frame AND matches the
+    // current grid resolution (resolution changes force a rebuild).
     if (existsSync(file)) {
       try {
         const prev = JSON.parse(readFileSync(file, 'utf8'));
-        if (prev.frames_used === prev.frames_expected) { console.log(`${date}: complete, skipping`); continue; }
+        if (prev.frames_used === prev.frames_expected &&
+            prev.values_mm?.length === GRID_SIZE * GRID_SIZE) {
+          console.log(`${date}: complete, skipping`);
+          continue;
+        }
       } catch { /* rebuild on unreadable file */ }
     }
     const result = await accumulateWindow(startMs, endMs, date);
