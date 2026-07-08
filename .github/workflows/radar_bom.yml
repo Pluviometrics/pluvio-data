@@ -1,0 +1,44 @@
+name: Radar v2 - BoM IDR714 accumulation
+
+on:
+  schedule:
+    # Hourly; the BoM FTP retains only ~2h of 5-minute frames.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: radar-bom
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Ingest new radar frames
+        run: node scripts/build_radar_bom.mjs
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "pluviometrics-radar-bot"
+          git config user.email "actions@github.com"
+          git add radar/nb2
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "radar/nb2: ingest BoM frames ($(date -u +%Y-%m-%dT%H:%MZ))"
+            git pull --rebase origin main
+            git push origin main
+          fi
