@@ -256,10 +256,12 @@ async function accumulateWindow(startMs, endMs, label) {
     window_end_utc: new Date(endMs).toISOString(),
     frames_expected: expected.length,
     frames_used: used.length,
+    frames_last_used_utc: used.length ? used[used.length - 1] : null,
     frames_missing: missing,
     values_mm: values
   };
 }
+
 
 // ---------------------------------------------------------------------------
 // Outputs
@@ -328,7 +330,7 @@ async function main() {
       } catch { /* rebuild on unreadable file */ }
     }
     const result = await accumulateWindow(startMs, endMs, date);
-    writeJson(file, { schema_version: SCHEMA_VERSION, date, ...result });
+        writeJson(file, { schema_version: SCHEMA_VERSION, date, ...result });
   }
 
   // Today: running total since the last day boundary.
