@@ -1,0 +1,46 @@
+name: Radar accumulation (Northern Beaches)
+
+on:
+  schedule:
+    # ~25 min after each 3-hourly Lizard frame (00/03/06/09/12/15/18/21 UTC)
+    - cron: '25 0,3,6,9,12,15,18,21 * * *'
+  workflow_dispatch:
+    inputs:
+      backfill_days:
+        description: 'Rebuild this many past Sydney days (0 = just today + yesterday)'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: radar-accumulation
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build accumulation grids
+        run: node scripts/build_radar_accumulation.mjs --backfill-days "${{ github.event.inputs.backfill_days || '0' }}"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "pluviometrics-radar-bot"
+          git config user.email "actions@github.com"
+          git add radar/nb
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "radar/nb: update accumulation grids ($(date -u +%Y-%m-%dT%H:%MZ))"
+            git pull --rebase origin main
+            git push origin main
+          fi
