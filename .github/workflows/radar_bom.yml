@@ -3,7 +3,7 @@ name: Radar v2 - BoM IDR714 accumulation
 on:
   schedule:
     # Hourly; the BoM FTP retains only ~2h of 5-minute frames.
-    - cron: '7 * * * *'
+    - cron: '7,37 * * * *'
   workflow_dispatch:
 
 permissions:
