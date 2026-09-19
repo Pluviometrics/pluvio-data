@@ -27,7 +27,8 @@ $Published = 'bom_current_readings.json'
 function Log([string]$Text) {
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz') $Text"
     Add-Content -Path $LogPath -Value $line -Encoding ascii
-    Write-Output $line
+    # Write-Host, not Write-Output: Run() returns its exit code through the output stream.
+    Write-Host $line
 }
 
 function Run([string]$Label, [string[]]$Command) {
