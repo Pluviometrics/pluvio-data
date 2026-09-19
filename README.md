@@ -18,6 +18,7 @@ That includes directories added by accident — see *Working data* below.
 | `radar/nb/` | Northern Beaches rainfall accumulation from the Lizard "Precipitation Australia" raster | `pluviometrics.radar_accumulation.v1` |
 | `radar/nb2/` | Northern Beaches accumulation from BoM Terrey Hills 64 km radar (IDR714), colour-class decoded, ~250 m native | `pluviometrics.radar_accumulation.v2_bom` |
 | `pluviometrics_rainfall_stations.json` | Rainfall station catalogue consumed by Stormgauge and Atmos | — |
+| `bom_current_readings.json` | BoM 15-minute rainfall for the last 7 days, for catalogue stations with no KiWIS series (keyed on the 6-digit BoM number found in `data_identifier`). Rebuilt hourly by `scripts/bom_hcs_hourly.ps1` from the HCS archive under `source/` via the scheduled task "Pluvio Stormgauge BoM HCS Hourly" | `bom_current_readings` |
 | `index` | Landing page for the data host | — |
 
 Both radar directories publish the same four files: `today.json`,
