@@ -40,6 +40,39 @@ Cloudflare R2 bucket `radar-data`, public host `radar-data.pluviometrics.com.au`
 secrets and holds `contents: read` — it never commits. Its local mirror
 directory `radar_sites/` is gitignored.
 
+## MHL KiWIS history mirror (SKYNET scheduled tasks)
+
+`scripts/mhl_mirror.py` mirrors the full record of every MHL gauge in
+`pluviometrics_rainfall_stations.json` with `source: mhl` and `cls` A–E, keyed on
+the catalogue `ts_id`, to the R2 bucket `gauge-data`. Its public host is
+`https://gauge-data.pluviometrics.com.au`, with CORS GET from
+`https://stormgauge.pluviometrics.com.au` only. Stormgauge reads history older
+than 7 days from it and fetches the last 7 days from MHL directly.
+
+| Key | Contents |
+|---|---|
+| `mhl/{ts_id}/{YYYY}.json` | One gauge-year in the KiWIS `getTimeseriesValues` JSON shape (`[{ts_id, rows, columns: "Timestamp,Value", data}]`), stored gzip with `Content-Encoding: gzip` |
+| `mhl/manifest.json` | Per `ts_id`: `years`, `complete_years`, `first_year`, `coverage_from`/`coverage_to`, `last_timestamp`, `fully_mirrored` |
+
+| Scheduled task (user Mark) | Command | Cadence |
+|---|---|---|
+| `Pluvio MHL Mirror Backfill` | `cmd.exe /c py scripts\mhl_mirror.py backfill` | at logon and hourly. It resumes from the manifest and exits at once when nothing is pending |
+| `Pluvio MHL Mirror Daily` | `cmd.exe /c py scripts\mhl_mirror.py incremental` | daily 04:15 |
+
+- Every MHL request goes through `curl.exe` with its default User-Agent and no
+  added headers. Requests run one at a time, one ts_id-year each, at least 2 s apart.
+- A 403, a 429 or a Cloudflare challenge stops the run and writes
+  `outputs\mhl_mirror\HALTED`. Both tasks then refuse to start until that file
+  is deleted by hand. Nothing retries around a challenge.
+- State and logs live under `outputs\mhl_mirror\` (gitignored): `manifest.json`
+  (the progress record, published to R2), `live\` (each gauge's latest year file),
+  and `logs\{mode}_{yyyyMMdd_HHmmss}.log`.
+- Uploads use `wrangler r2 object put --remote`, the same as `build_radar_sites.mjs`.
+  They use `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` when set, otherwise
+  wrangler's own login.
+- Tests: `py -m unittest discover -s scripts -p "test_mhl_mirror.py"`.
+- To stop it: `Disable-ScheduledTask -TaskName 'Pluvio MHL Mirror Backfill'` (and `... Daily`).
+
 The station catalogue is built out-of-band, not by any workflow:
 `scripts/build_stations_catalogue.py`, `scripts/build_stations_wdo.py`, and
 `scripts/validate_bom_high_resolution_inventory.py`.
